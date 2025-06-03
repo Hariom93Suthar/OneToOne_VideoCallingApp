@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "273648909200",
+    "project_id": "video-callapp-c0572",
+    "storage_bucket": "video-callapp-c0572.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:273648909200:android:801bbc7b49c314e822d115",
+        "android_client_info": {
+          "package_name": "com.example.video_call_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmUVQ0l-xNKeQl7-oSiT7GS69TZZIhNBE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
