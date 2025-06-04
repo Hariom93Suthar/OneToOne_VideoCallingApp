@@ -12,7 +12,9 @@ class UserSelectionView extends StatefulWidget {
 class _UserSelectionViewState extends State<UserSelectionView> {
   final UserSelectionController controller = Get.put(UserSelectionController());
   bool isConnected = true;
-  bool _isLoading = false;  // Loading state add kiya
+
+  Map<String, bool> _buttonLoading = {};
+
   late StreamSubscription<List<ConnectivityResult>> _subscription;
 
   @override
@@ -61,35 +63,25 @@ class _UserSelectionViewState extends State<UserSelectionView> {
     }
   }
 
+  void _setButtonLoading(String text, bool value) {
+    _buttonLoading[text] = value;
+    setState(() {});
+  }
+
+  Future<void> _onUserTap(String user, String otherUser) async {
+    await controller.selectUser(user, otherUser);
+  }
+
   @override
   void dispose() {
     _subscription.cancel();
     super.dispose();
   }
 
-  // Ye method ab async ho gaya, loading state handle karne ke liye
-  Future<void> _onUserTap(String user, String otherUser) async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      await controller.selectUser(user, otherUser);
-      // Agar aapko koi aur delay chahiye to yahan add kar sakte hain
-      // await Future.delayed(Duration(seconds: 1));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFE8F0FF), Color(0xFFFDEBFF)],
@@ -110,18 +102,14 @@ class _UserSelectionViewState extends State<UserSelectionView> {
                 ),
               ),
               SizedBox(height: 60),
-
-              // Button 1
               _userButton(
                 'Login as User A',
-                    () => _onUserTap('userA', "userB"),
+                    () => _onUserTap('userA', 'userB'),
               ),
               SizedBox(height: 30),
-
-              // Button 2
               _userButton(
                 'Login as User B',
-                    () => _onUserTap('userB', "userA"),
+                    () => _onUserTap('userB', 'userA'),
               ),
             ],
           ),
@@ -130,11 +118,19 @@ class _UserSelectionViewState extends State<UserSelectionView> {
     );
   }
 
-  Widget _userButton(String text, VoidCallback onTap) {
+  Widget _userButton(String text, Future<void> Function() onTap) {
+    bool isThisButtonLoading = _buttonLoading[text] ?? false;
+
     return GestureDetector(
-      onTap: (isConnected && !_isLoading) ? onTap : null,
+      onTap: (isConnected && !isThisButtonLoading)
+          ? () async {
+        _setButtonLoading(text, true);
+        await onTap(); // ✅ Ab ye sahi hai kyunki onTap() ek Future return karega
+        _setButtonLoading(text, false);
+      }
+          : null,
       child: Opacity(
-        opacity: (isConnected && !_isLoading) ? 1.0 : 0.4,
+        opacity: (isConnected && !isThisButtonLoading) ? 1.0 : 0.4,
         child: Container(
           width: 240,
           padding: EdgeInsets.symmetric(vertical: 12),
@@ -143,7 +139,7 @@ class _UserSelectionViewState extends State<UserSelectionView> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
-            child: _isLoading
+            child: isThisButtonLoading
                 ? SizedBox(
               height: 20,
               width: 20,

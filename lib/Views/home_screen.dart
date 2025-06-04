@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_callkit_incoming/entities/call_event.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:get/get.dart';
 import 'package:video_call_app/Controllers/HomeController/home_controller.dart';
 import 'package:video_call_app/LocalStorage/local_storage.dart';
 import 'package:video_call_app/Views/callScreen/outgoing_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final String? userId;
@@ -192,16 +195,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   final channelId =
                   await callController.sendCallNotification();
                   if (channelId != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CallingScreen(
-                          calleeName: widget.otherUser,
-                          channelId: channelId,
-                          recivedUser: LocalStorageService.getLoggedUser(),
-                        ),
-                      ),
-                    );
+                    Get.to(()=>CallingScreen(
+                      calleeName: widget.otherUser,
+                      channelId: channelId,
+                      recivedUser: LocalStorageService.getLoggedUser(),
+                    ),);
                   } else {
                     Get.snackbar('Failed', 'Could not initiate call');
                   }

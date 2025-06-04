@@ -3,11 +3,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:video_call_app/Services/notification_call_backhandler.dart';
+import 'package:video_call_app/main.dart';
 import '../Views/callScreen/incoming_call_screen.dart';
-import '../main.dart';
+
 
 @pragma('vm:entry-point')
-
 class FirebaseMessagingService extends GetxService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -15,19 +16,21 @@ class FirebaseMessagingService extends GetxService {
 
   static RemoteMessage? _lastCallMessage;
   bool _isIncomingCallScreenOpen = false;
-  bool _hasNavigatedToCall = false; // ✅ Prevent double navigation
+  bool _hasNavigatedToCall = false;
 
-  /// Background handler (static)
   static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
     print('📥 (BG Handler) Message received: ${message.data}');
 
-    // ✅ Manually initialize FlutterLocalNotificationsPlugin
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initSettings = InitializationSettings(android: androidSettings);
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
+    const AndroidInitializationSettings androidSettings =
+    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings =
+    InitializationSettings(android: androidSettings);
+    await flutterLocalNotificationsPlugin.initialize(initSettings,
+        onDidReceiveBackgroundNotificationResponse: notificationTapBackground);
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'call_channel',
@@ -41,22 +44,15 @@ class FirebaseMessagingService extends GetxService {
       visibility: NotificationVisibility.public,
       autoCancel: false,
       actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          'ACCEPT_CALL',
-          'Accept',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-        AndroidNotificationAction(
-          'DECLINE_CALL',
-          'Decline',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
+        AndroidNotificationAction('ACCEPT_CALL', 'Accept',
+            showsUserInterface: true, cancelNotification: true),
+        AndroidNotificationAction('DECLINE_CALL', 'Decline',
+            showsUserInterface: true, cancelNotification: true),
       ],
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    const NotificationDetails platformDetails =
+    NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.show(
       100,
@@ -66,6 +62,7 @@ class FirebaseMessagingService extends GetxService {
       payload: 'incoming_call',
     );
   }
+
   Future<FirebaseMessagingService> init() async {
     await _initializeLocalNotifications();
 
@@ -74,7 +71,12 @@ class FirebaseMessagingService extends GetxService {
 
     FirebaseMessaging.onMessage.listen((message) {
       print('📩 Foreground Notification: ${message.data}');
-      _showIncomingCallNotification(message);
+      if (!_isIncomingCallScreenOpen &&
+          navigatorKey.currentState?.context != null) {
+        _handleNotificationSafely(message);
+      } else {
+        _showIncomingCallNotification(message);
+      }
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
@@ -92,7 +94,6 @@ class FirebaseMessagingService extends GetxService {
     return this;
   }
 
-  // ✅ Safe version with delayed navigation and flag
   void _handleNotificationSafely(RemoteMessage message) {
     if (_hasNavigatedToCall) return;
     _hasNavigatedToCall = true;
@@ -101,11 +102,12 @@ class FirebaseMessagingService extends GetxService {
     final caller = data['caller'];
     final channelId = data['channelId'];
 
+    print("'💤 '💤 '💤 ${data},${caller},${channelId}");
+
     if (caller != null && channelId != null && !_isIncomingCallScreenOpen) {
       _isIncomingCallScreenOpen = true;
 
-      // Delay a bit to make sure UI is mounted
-      Future.delayed(Duration(milliseconds: 300), () {
+      Future.delayed(Duration(milliseconds: 200), () {
         if (navigatorKey.currentState?.mounted ?? false) {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
@@ -114,7 +116,7 @@ class FirebaseMessagingService extends GetxService {
                 channelId: channelId,
                 onCallScreenClosed: () {
                   _isIncomingCallScreenOpen = false;
-                  _hasNavigatedToCall = false; // Reset
+                  _hasNavigatedToCall = false;
                 },
               ),
             ),
@@ -127,7 +129,6 @@ class FirebaseMessagingService extends GetxService {
     }
   }
 
-  // ✅ Local Notification Button Tap Handler
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
     AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -150,10 +151,10 @@ class FirebaseMessagingService extends GetxService {
           }
         }
       },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground, // ✅ Added
     );
   }
 
-  // ✅ Still used in foreground to show call notification
   void _showIncomingCallNotification(RemoteMessage message) async {
     _lastCallMessage = message;
 
@@ -169,18 +170,10 @@ class FirebaseMessagingService extends GetxService {
       visibility: NotificationVisibility.public,
       autoCancel: false,
       actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          'ACCEPT_CALL',
-          'Accept',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-        AndroidNotificationAction(
-          'DECLINE_CALL',
-          'Decline',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
+        AndroidNotificationAction('ACCEPT_CALL', 'Accept',
+            showsUserInterface: true, cancelNotification: true),
+        AndroidNotificationAction('DECLINE_CALL', 'Decline',
+            showsUserInterface: true, cancelNotification: true),
       ],
     );
 
@@ -196,4 +189,3 @@ class FirebaseMessagingService extends GetxService {
     );
   }
 }
-

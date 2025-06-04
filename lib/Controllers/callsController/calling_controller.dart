@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_call_app/LocalStorage/local_storage.dart';
 import 'package:video_call_app/Utils/Routes/route.dart';
 import 'package:video_call_app/Views/home_screen.dart';
 
@@ -16,7 +17,7 @@ class CallController extends GetxController {
   CallController(this.channelName,this.channelId);
 
   static const String appId = '6897f9b3d7bb446a86ca5a36e2088547';
-  static const String token = "007eJxTYJg+edmBHqenbVON+9ZZVGo8lH7jqMtucOy1Env5Fdufm0wVGMwsLM3TLJOMU8yTkkxMzBItzJITTRONzVKNDCwsTE3MbyfZZTQEMjLIhTayMjJAIIjPwlCSWlzCwAAAM0Qedg==";
+  static const String token = "007eJxTYLjv96xVNKphelJgD0+LQGL/mT+ZzSY3Iw77fNl7OFGtfZcCg5mFpXmaZZJxinlSkomJWaKFWXKiaaKxWaqRgYWFqYn5DBGHjIZARobv0d4MjFAI4rMwlKQWlzAwAABjXh9n";
 
   late RtcEngine _engine;
   late int _localUid;
@@ -52,7 +53,7 @@ class CallController extends GetxController {
         Future.delayed(const Duration(milliseconds: 300), () {
           if (Get.isDialogOpen ?? false) Get.back();
           if (Get.isSnackbarOpen ?? false) Get.back();
-          Get.offAndToNamed(AppRoutes.homeScreenRoute,arguments: "User");
+          Get.off(()=>HomeScreen(userId: LocalStorageService.getLoggedUser(), otherUser: LocalStorageService.getOtherUser()));
         });
       }
     });
@@ -120,7 +121,7 @@ class CallController extends GetxController {
         .collection("calls")
         .doc(channelId)
         .update({"isActive": false});
-    Get.offAll(()=>HomeScreen(userId: "User", otherUser: "User"));
+    Get.off(()=>HomeScreen(userId: LocalStorageService.getLoggedUser(), otherUser: LocalStorageService.getOtherUser()));
   }
 
 

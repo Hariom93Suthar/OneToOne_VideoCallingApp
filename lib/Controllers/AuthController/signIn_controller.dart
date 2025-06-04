@@ -18,7 +18,7 @@ class UserSelectionController extends GetxController {
       LocalStorageService.saveLoggedUser(userId);
       LocalStorageService.saveOtherUser(otherUser);
 
-      Get.offAll(()=>HomeScreen(userId: userId, otherUser: otherUser));
+      Get.to(()=>HomeScreen(userId: userId, otherUser: otherUser));
     } else {
       print('✅ FCM Token not found');
     }

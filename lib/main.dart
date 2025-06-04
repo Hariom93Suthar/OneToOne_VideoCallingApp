@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:get/get.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -13,7 +15,6 @@ void main() async {
   await Firebase.initializeApp();
 
   FirebaseMessaging.onBackgroundMessage(FirebaseMessagingService.backgroundHandler);
-
   // Initialize Messaging Service (handles notification + call screen)
   await Get.putAsync(() => FirebaseMessagingService().init());
 

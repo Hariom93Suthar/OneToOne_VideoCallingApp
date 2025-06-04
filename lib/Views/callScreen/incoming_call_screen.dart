@@ -20,6 +20,7 @@ class IncomingCallScreen extends StatelessWidget {
       IncomingCallController(
         caller: caller,
         channelId: channelId,
+        context: context,
         onCallScreenClosed: onCallScreenClosed,
       ),
     );
@@ -58,6 +59,7 @@ class IncomingCallScreen extends StatelessWidget {
                     onPressed: controller.acceptCall,
                     child: Icon(Icons.videocam, size: 30),
                   ),
+
                   FloatingActionButton(
                     heroTag: "reject",
                     backgroundColor: Colors.red,

@@ -8,10 +8,12 @@ class IncomingCallController extends GetxController {
   final String caller;
   final String channelId;
   final VoidCallback? onCallScreenClosed;
+  final BuildContext context; // 🔥 ADD THIS
 
   IncomingCallController({
     required this.caller,
     required this.channelId,
+    required this.context, // 🔥 ADD THIS
     this.onCallScreenClosed,
   });
 
@@ -27,9 +29,14 @@ class IncomingCallController extends GetxController {
     _timeoutTimer = Timer(Duration(seconds: 30), () async {
       await updateCallStatus("missed");
       onCallScreenClosed?.call();
-      if (Get.isDialogOpen ?? false) Get.back();
+
+      if ((Get.isDialogOpen ?? false) || (Get.isOverlaysOpen ?? false) || (Get.key.currentState?.canPop() ?? false)) {
+        Get.back();
+      }
     });
   }
+
+
 
   void cancelTimer() {
     _timeoutTimer?.cancel();
@@ -43,7 +50,6 @@ class IncomingCallController extends GetxController {
       await callRef.update({'status': status});
     } else {
       await callRef.set({'status': status});
-      print("⚠️ Document not found. Created with status: $status");
     }
   }
 
@@ -51,14 +57,14 @@ class IncomingCallController extends GetxController {
     cancelTimer();
     await updateCallStatus("accepted");
     onCallScreenClosed?.call();
-    Get.to(() => CallPage(channelName: "test",channelId: channelId,));
+    Get.to(() => CallPage(channelName: "test", channelId: channelId));
   }
 
   Future<void> rejectCall() async {
     cancelTimer();
     await updateCallStatus("rejected");
     onCallScreenClosed?.call();
-    Get.back();
+    Navigator.of(context, rootNavigator: true).pop(); // ✅ close screen
   }
 
   Future<bool> handleBackPressed() async {

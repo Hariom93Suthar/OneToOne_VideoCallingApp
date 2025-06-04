@@ -57,9 +57,22 @@ class OutgoingCallController extends GetxController {
               .doc(channelId)
               .set({'status': 'ended'}, SetOptions(merge: true));
 
-          await _updateCallLogStatus('missed'); // 👈 Missed call log
-          if (context.mounted) Navigator.of(context).pop();
+          await _updateCallLogStatus('missed');
+
+          final userId = LocalStorageService.getLoggedUser();
+          final otherUser = LocalStorageService.getOtherUser();
+
+          print("userId: $userId, otherUser: $otherUser");
+
+          if (userId != null && otherUser != null) {
+            if (Get.context != null && Get.key.currentState?.mounted == true) {
+              Get.offAll(() => HomeScreen(userId: userId, otherUser: otherUser));
+            }
+          } else {
+            print("⚠️ userId or otherUser is null, cannot navigate to HomeScreen.");
+          }
         }
+
       }
     });
   }
@@ -79,6 +92,7 @@ class OutgoingCallController extends GetxController {
         _callTimeoutTimer?.cancel();
         _updateCallLogStatus('accepted');
         if (context.mounted) {
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
