@@ -17,7 +17,7 @@ class CallController extends GetxController {
   CallController(this.channelName,this.channelId);
 
   static const String appId = '6897f9b3d7bb446a86ca5a36e2088547';
-  static const String token = "007eJxTYLjv96xVNKphelJgD0+LQGL/mT+ZzSY3Iw77fNl7OFGtfZcCg5mFpXmaZZJxinlSkomJWaKFWXKiaaKxWaqRgYWFqYn5DBGHjIZARobv0d4MjFAI4rMwlKQWlzAwAABjXh9n";
+  static const String token = "007eJxTYNgm+TvHo8igp8D+s3dPQsu7ebUTPV/c1ro/7wj/a7b6hM0KDGYWluZplknGKeZJSSYmZokWZsmJponGZqlGBhYWpibmc51DMhoCGRnOlZQwMjJAIIjPwlCSWlzCwAAAj2sgJA==";
 
   late RtcEngine _engine;
   late int _localUid;

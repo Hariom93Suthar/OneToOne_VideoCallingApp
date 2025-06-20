@@ -1,9 +1,18 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.video_call_app">
+<!-- ... aapka existing code yahi se start -->
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -39,7 +48,6 @@
             android:windowSoftInputMode="adjustResize">
 
             <meta-data
-
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"
                 />
@@ -55,11 +63,19 @@
             </intent-filter>
         </activity>
 
-<!--        <service-->
-<!--            android:name="com.dooboolab.fluttercallkitincoming.CallkitIncomingService"-->
-<!--            android:exported="true"-->
-<!--            android:enabled="true"-->
-<!--            android:foregroundServiceType="microphone|camera|connectedDevice" />-->
+        <!-- Added Service for Flutter Callkit Incoming -->
+        <service
+            android:name="com.dooboolab.fluttercallkitincoming.CallkitIncomingService"
+            android:exported="true"
+            android:enabled="true"
+            android:foregroundServiceType="microphone|camera|connectedDevice" />
+
+        <service
+            android:name="com.hiennv.flutter_callkit_incoming.OngoingNotificationService"
+            android:foregroundServiceType="phoneCall"
+            android:exported="true"
+            tools:replace="android:exported" />
+
 
 
 

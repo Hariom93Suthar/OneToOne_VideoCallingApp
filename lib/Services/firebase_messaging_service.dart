@@ -3,13 +3,14 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:video_call_app/Services/call_kit.dart';
 import 'package:video_call_app/Services/notification_call_backhandler.dart';
 import 'package:video_call_app/main.dart';
 import '../Views/callScreen/incoming_call_screen.dart';
 
 
 @pragma('vm:entry-point')
-class FirebaseMessagingService extends GetxService {
+class FirebaseMessagingService extends GetxService with WidgetsBindingObserver {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
@@ -17,6 +18,26 @@ class FirebaseMessagingService extends GetxService {
   static RemoteMessage? _lastCallMessage;
   bool _isIncomingCallScreenOpen = false;
   bool _hasNavigatedToCall = false;
+
+  AppLifecycleState _appState = AppLifecycleState.resumed; // 🔹 Track app state
+
+  @override
+  void onInit() {
+    super.onInit();
+    WidgetsBinding.instance.addObserver(this); // 🔹 Start observing app state
+  }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this); // 🔹 Clean observer
+    super.onClose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appState = state;
+    print('📲 App state changed: $_appState');
+  }
 
   static Future<void> backgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
@@ -29,6 +50,7 @@ class FirebaseMessagingService extends GetxService {
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initSettings =
     InitializationSettings(android: androidSettings);
+
     await flutterLocalNotificationsPlugin.initialize(initSettings,
         onDidReceiveBackgroundNotificationResponse: notificationTapBackground);
 
@@ -73,7 +95,7 @@ class FirebaseMessagingService extends GetxService {
       print('📩 Foreground Notification: ${message.data}');
       if (!_isIncomingCallScreenOpen &&
           navigatorKey.currentState?.context != null) {
-        _handleNotificationSafely(message);
+          handleNotificationSafely(message);
       } else {
         _showIncomingCallNotification(message);
       }
@@ -81,51 +103,62 @@ class FirebaseMessagingService extends GetxService {
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       print('📬 Notification Clicked: ${message.data}');
-      _handleNotificationSafely(message);
+      handleNotificationSafely(message);
     });
 
     RemoteMessage? initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       print('💤 App opened from terminated: ${initialMessage.data}');
       await Future.delayed(Duration(milliseconds: 800));
-      _handleNotificationSafely(initialMessage);
+      handleNotificationSafely(initialMessage);
     }
 
     return this;
   }
 
-  void _handleNotificationSafely(RemoteMessage message) {
+  Future<void> handleNotificationSafely(RemoteMessage message) async {
     if (_hasNavigatedToCall) return;
     _hasNavigatedToCall = true;
 
     final data = message.data;
-    final caller = data['caller'];
-    final channelId = data['channelId'];
+    final String caller = data['caller'];
+    final String channelId = data['channelId'];
 
     print("'💤 '💤 '💤 ${data},${caller},${channelId}");
 
     if (caller != null && channelId != null && !_isIncomingCallScreenOpen) {
       _isIncomingCallScreenOpen = true;
 
-      Future.delayed(Duration(milliseconds: 200), () {
-        if (navigatorKey.currentState?.mounted ?? false) {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (_) => IncomingCallScreen(
-                caller: caller,
-                channelId: channelId,
-                onCallScreenClosed: () {
-                  _isIncomingCallScreenOpen = false;
-                  _hasNavigatedToCall = false;
-                },
-              ),
+      await Future.delayed(Duration(milliseconds: 200));
+      final currentContext = navigatorKey.currentContext;
+
+      if (_appState == AppLifecycleState.resumed &&
+          navigatorKey.currentState?.mounted == true) {
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => IncomingCallScreen(
+              caller: caller,
+              channelId: channelId,
+              onCallScreenClosed: () {
+                _isIncomingCallScreenOpen = false;
+                _hasNavigatedToCall = false;
+              },
             ),
-          );
-        } else {
-          _isIncomingCallScreenOpen = false;
-          _hasNavigatedToCall = false;
-        }
-      });
+          ),
+        );
+      } else if (currentContext != null) {
+        await showIncomingCall(
+          caller: caller,
+          callId: channelId,
+          context: currentContext,
+        );
+        _isIncomingCallScreenOpen = false;
+        _hasNavigatedToCall = false;
+      } else {
+        print('⚠️ context is null — unable to showIncomingCall right now.');
+        _isIncomingCallScreenOpen = false;
+        _hasNavigatedToCall = false;
+      }
     }
   }
 
@@ -141,17 +174,17 @@ class FirebaseMessagingService extends GetxService {
         if (response.actionId == 'ACCEPT_CALL') {
           print('☎️ Call Accepted');
           if (_lastCallMessage != null) {
-            _handleNotificationSafely(_lastCallMessage!);
+            handleNotificationSafely(_lastCallMessage!);
           }
         } else if (response.actionId == 'DECLINE_CALL') {
           print('📵 Call Declined');
         } else if (response.payload == 'incoming_call') {
           if (_lastCallMessage != null) {
-            _handleNotificationSafely(_lastCallMessage!);
+            handleNotificationSafely(_lastCallMessage!);
           }
         }
       },
-      onDidReceiveBackgroundNotificationResponse: notificationTapBackground, // ✅ Added
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
   }
 

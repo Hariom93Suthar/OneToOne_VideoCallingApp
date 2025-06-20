@@ -16,8 +16,6 @@ class OutgoingCallController extends GetxController {
   StreamSubscription<DocumentSnapshot>? _callStatusSubscription;
   StreamSubscription<DocumentSnapshot>? _callTimeoutSubscription;
 
-  Timer? _callTimeoutTimer;
-
   OutgoingCallController({
     required this.channelId,
     required this.context,
@@ -34,7 +32,6 @@ class OutgoingCallController extends GetxController {
   }
 
   void _startCallTimeoutListener() {
-    Timestamp callStartTime = Timestamp.now();
     _callTimeoutSubscription = FirebaseFirestore.instance
         .collection('calls')
         .doc(channelId)
@@ -44,35 +41,34 @@ class OutgoingCallController extends GetxController {
 
       final data = doc.data();
       final status = data?['status'];
-      final Timestamp createdAt = data?['createdAt'] ?? callStartTime;
+      final Timestamp? createdAt = data?['createdAt'];
 
       if (status != 'accepted' && status != 'rejected' && status != 'ended') {
-        final currentTime = DateTime.now();
-        final callTime = createdAt.toDate();
-        final difference = currentTime.difference(callTime);
+        if (createdAt != null) {
+          final currentTime = DateTime.now();
+          final callTime = createdAt.toDate();
+          final difference = currentTime.difference(callTime);
 
-        if (difference.inSeconds >= 30) {
-          await FirebaseFirestore.instance
-              .collection('calls')
-              .doc(channelId)
-              .set({'status': 'ended'}, SetOptions(merge: true));
+          if (difference.inSeconds >= 30) {
+            await FirebaseFirestore.instance
+                .collection('calls')
+                .doc(channelId)
+                .set({'status': 'ended'}, SetOptions(merge: true));
 
-          await _updateCallLogStatus('missed');
+            await _updateCallLogStatus('missed');
 
-          final userId = LocalStorageService.getLoggedUser();
-          final otherUser = LocalStorageService.getOtherUser();
+            final userId = LocalStorageService.getLoggedUser();
+            final otherUser = LocalStorageService.getOtherUser();
 
-          print("userId: $userId, otherUser: $otherUser");
+            print("🕑 Call timeout. Navigating to Home. userId: $userId, otherUser: $otherUser");
 
-          if (userId != null && otherUser != null) {
-            if (Get.context != null && Get.key.currentState?.mounted == true) {
-              Get.offAll(() => HomeScreen(userId: userId, otherUser: otherUser));
+            if (userId != null && otherUser != null) {
+              if (context.mounted) {
+                Get.offAll(() => HomeScreen(userId: userId, otherUser: otherUser));
+              }
             }
-          } else {
-            print("⚠️ userId or otherUser is null, cannot navigate to HomeScreen.");
           }
         }
-
       }
     });
   }
@@ -89,10 +85,8 @@ class OutgoingCallController extends GetxController {
       final status = data?['status'];
 
       if (status == 'accepted') {
-        _callTimeoutTimer?.cancel();
         _updateCallLogStatus('accepted');
         if (context.mounted) {
-
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -100,14 +94,19 @@ class OutgoingCallController extends GetxController {
             ),
           );
         }
-      } else if (status == 'rejected') {
-        _callTimeoutTimer?.cancel();
-        _updateCallLogStatus('rejected');
-        if (context.mounted) Navigator.of(context).pop();
-      } else if (status == 'ended') {
-        _callTimeoutTimer?.cancel();
-        _updateCallLogStatus('ended');
-        if (context.mounted) Navigator.of(context).pop();
+      } else if (status == 'rejected' || status == 'ended') {
+        _updateCallLogStatus(status ?? 'ended');
+
+        final userId = LocalStorageService.getLoggedUser();
+        final otherUser = LocalStorageService.getOtherUser();
+
+        if (userId != null && otherUser != null) {
+          if (context.mounted) {
+            Get.offAll(() => HomeScreen(userId: userId, otherUser: otherUser));
+          }
+        } else {
+          print("⚠️ Can't go to Home, user info missing.");
+        }
       }
     });
   }
@@ -118,8 +117,17 @@ class OutgoingCallController extends GetxController {
           .collection('calls')
           .doc(channelId)
           .set({'status': 'ended'}, SetOptions(merge: true));
+
       await _updateCallLogStatus('ended');
-      if (context.mounted) Get.offAll(()=>HomeScreen(userId: LocalStorageService.getLoggedUser(), otherUser: LocalStorageService.getOtherUser()));
+
+      final userId = LocalStorageService.getLoggedUser();
+      final otherUser = LocalStorageService.getOtherUser();
+
+      if (userId != null && otherUser != null) {
+        if (context.mounted) {
+          Get.offAll(() => HomeScreen(userId: userId, otherUser: otherUser));
+        }
+      }
     } catch (e) {
       print("❌ Failed to end call: $e");
     }
@@ -128,8 +136,6 @@ class OutgoingCallController extends GetxController {
   Future<void> _logCallData() async {
     try {
       final callDocRef = FirebaseFirestore.instance.collection('callLogs').doc(channelId);
-      final callDoc = await callDocRef.get();
-
       await callDocRef.set({
         'caller': callerName,
         'receiver': LocalStorageService.getLoggedUser(),
@@ -141,17 +147,14 @@ class OutgoingCallController extends GetxController {
     }
   }
 
-  /// ✅ Function to update status in both 'calls' and 'callLogs' collection
   Future<void> _updateCallLogStatus(String status) async {
     try {
       final timestamp = FieldValue.serverTimestamp();
-      // Update 'calls' collection
       await FirebaseFirestore.instance.collection('calls').doc(channelId).set({
         'status': status,
         'updatedAt': timestamp,
       }, SetOptions(merge: true));
 
-      // Also update 'callLogs' collection
       await FirebaseFirestore.instance.collection('callLogs').doc(channelId).set({
         'status': status,
         'updatedAt': timestamp,
